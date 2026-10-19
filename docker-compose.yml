@@ -1,0 +1,82 @@
+# ExP 89 - HTTPS con Nginx reverse proxy + WordPress + MariaDB
+# Autor: Volodymyr Osebchuk
+# Los secretos se leen del fichero .env (solo en el servidor; en el repositorio solo .env.example).
+name: exp89
+
+services:
+  reverse-proxy:
+    image: nginx:stable-alpine
+    container_name: exp89-nginx
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/ssl/certs/servidor.crt:/etc/nginx/certs/servidor.crt:ro
+      - /etc/ssl/private/servidor.key:/etc/nginx/certs/servidor.key:ro
+    networks:
+      - exp89_front
+
+  wordpress:
+    image: wordpress:6-php8.3-apache
+    container_name: exp89-wordpress
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      # URL canonica por HTTPS; la imagen oficial ya interpreta X-Forwarded-Proto
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'https://${PORTAL_FQDN}');
+        define('WP_SITEURL', 'https://${PORTAL_FQDN}');
+    volumes:
+      - exp89_wp_data:/var/www/html
+    networks:
+      - exp89_front
+      - exp89_back
+
+  mariadb:
+    image: mariadb:11.4
+    container_name: exp89-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - exp89_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - exp89_back
+
+networks:
+  exp89_front:
+    name: exp89_front
+    ipam:
+      config:
+        - subnet: 10.89.1.0/24
+  exp89_back:
+    name: exp89_back
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.89.2.0/24
+
+volumes:
+  exp89_wp_data:
+    name: exp89_wp_data
+  exp89_db_data:
+    name: exp89_db_data

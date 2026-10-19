@@ -1,0 +1,7 @@
+# Puertos accesibles desde el cliente (WSL) hacia 192.168.1.109
+22/tcp: ABIERTO
+80/tcp: ABIERTO
+443/tcp: ABIERTO
+3306/tcp: cerrado/filtrado
+8080/tcp: cerrado/filtrado
+9000/tcp: cerrado/filtrado

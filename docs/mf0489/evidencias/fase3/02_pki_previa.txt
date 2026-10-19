@@ -1,0 +1,13 @@
+# 8.3 Certificados de la Fase 2 instalados (sin mostrar contenido de claves)
+$ sudo ls -l /etc/ssl/private/servidor.key; ls -l /etc/ssl/certs/servidor.crt /etc/ssl/mf0489/ca.crt
+
+-rw------- 1 root root 2484 Oct 19 18:08 /etc/ssl/private/servidor.key
+-rw-r--r-- 1 root root 1809 Oct 19 18:08 /etc/ssl/certs/servidor.crt
+-rw-r--r-- 1 root root 1968 Oct 19 18:08 /etc/ssl/mf0489/ca.crt
+
+$ openssl verify -CAfile /etc/ssl/mf0489/ca.crt -purpose sslserver -verify_hostname "$DOMINIO" /etc/ssl/certs/servidor.crt
+/etc/ssl/certs/servidor.crt: OK
+
+# Copia de seguridad de los ficheros nuevos (fuera de cualquier repositorio; la clave NO se copia)
+docker-compose.yml
+nginx

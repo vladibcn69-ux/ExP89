@@ -1,0 +1,52 @@
+# 12.1/12.2 Acceso interno y WordPress detras del proxy (todo por HTTPS verificado con --cacert)
+GET https://portal.proyecto.test/ -> HTTP 200, redirecciones=0, url_efectiva=https://portal.proyecto.test/
+GET https://portal.proyecto.test/wp-login.php -> HTTP 200, redirecciones=0, url_efectiva=https://portal.proyecto.test/wp-login.php
+GET https://portal.proyecto.test/?p=1 -> HTTP 200, redirecciones=0, url_efectiva=https://portal.proyecto.test/?p=1
+GET https://portal.proyecto.test/?rest_route=/ -> HTTP 200, redirecciones=0, url_efectiva=https://portal.proyecto.test/?rest_route=/
+GET https://portal.proyecto.test/wp-admin/ -> HTTP 302, redirecciones=0, url_efectiva=https://portal.proyecto.test/wp-admin/
+
+# Seguir redirecciones: /wp-admin/ -> login (sin bucles, max 5)
+HTTP 200, redirecciones=1, final=https://portal.proyecto.test/wp-login.php?redirect_to=https%3A%2F%2Fportal.proyecto.test%2Fwp-admin%2F&reauth=1
+
+# Enlaces y recursos en la pagina principal: referencias http:// (contenido mixto)
+HTML bytes: 66668
+referencias a http://portal.proyecto.test: 0
+referencias a https://portal.proyecto.test: 32
+titulo: <title>ExP89 Portal
+
+# 12.2 URLs de WordPress guardadas en la BBDD
+option_name	option_value
+home	https://portal.proyecto.test
+siteurl	https://portal.proyecto.test
+# Prueba funcional con la BBDD: crear una entrada (XML-RPC por HTTPS) y leerla
+ID de la entrada creada: 7
+-- leida desde la BBDD (MariaDB):
+ID	post_title	post_status	post_date
+5	Prueba ExP89 persistencia	publish	2026-10-19 18:24:41
+6	Prueba ExP89 persistencia	inherit	2026-10-19 18:24:41
+7	Prueba ExP89 persistencia 2	publish	2026-10-19 18:25:20
+8	Prueba ExP89 persistencia 2	inherit	2026-10-19 18:25:20
+-- leida por la API REST via HTTPS:
+"title":{"rendered":"Prueba ExP89 persistencia 2"
+-- usuarios en la BBDD:
+ID	user_login
+1	admin_exp89
+
+# Persistencia: reinicio no destructivo de los contenedores (docker compose restart, SIN down -v)
+ Container exp89-mariadb  Restarting
+ Container exp89-mariadb  Started
+ Container exp89-nginx  Started
+ Container exp89-wordpress  Started
+NAME              STATUS
+exp89-mariadb     Up 26 seconds (healthy)
+exp89-nginx       Up 26 seconds
+exp89-wordpress   Up 25 seconds
+-- tras el reinicio, la entrada sigue en la BBDD:
+ID	post_title
+5	Prueba ExP89 persistencia
+6	Prueba ExP89 persistencia
+7	Prueba ExP89 persistencia 2
+8	Prueba ExP89 persistencia 2
+-- y sigue accesible por HTTPS:
+"title":{"rendered":"Prueba ExP89 persistencia 2"
+GET / tras reinicio -> HTTP 200

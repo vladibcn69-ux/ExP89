@@ -1,0 +1,28 @@
+# 8.1 Estado previo del servidor (capturado ANTES de desplegar el proyecto exp89)
+$ docker compose ls -a
+NAME                STATUS              CONFIG FILES
+(sin proyectos Compose: el entorno anterior se creo con "docker run", sin Compose)
+
+$ docker compose ps      (en ~/exp89 antes de existir)
+no configuration file provided: not found
+
+$ ss -tulnp   (resumen: solo SSH, DNS local y chrony; 80, 443 y 8080 libres)
+tcp   LISTEN 0.0.0.0:22       (sshd)
+tcp   LISTEN 127.0.0.53:53    (resolver local)
+udp   UNCONN 127.0.0.1:323    (chrony)
+
+$ docker ps -a   (resumen)
+4 contenedores detenidos de proyectos anteriores (no se tocan, no se usan).
+
+$ docker network ls   (resumen)
+Redes de proyectos anteriores (sin tocar): subredes 10.0.1.0/24, 10.0.2.0/24, 10.0.3.0/24, 172.18.0.0/16,
+172.19.0.0/16, 172.20.0.0/16 y bridge por defecto 172.17.0.0/16. Las subredes de exp89 (10.89.1.0/24 y 10.89.2.0/24)
+se eligieron para no solaparse con ninguna de ellas.
+
+$ sudo ufw status
+Status: inactive     (politica iptables INPUT ACCEPT; no hizo falta abrir puertos)
+
+# 8.2 Proteccion del trabajo anterior
+No se modifica ni se reutiliza ningun contenedor, red, volumen ni fichero anterior. El proyecto exp89 es nuevo e
+independiente (contenedores exp89-*, redes exp89_*, volumenes exp89_*), por lo que no se ejecuta "docker compose down -v".
+No existen datos previos que migrar: la base de datos y WordPress de exp89 se crean de cero.

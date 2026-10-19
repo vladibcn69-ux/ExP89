@@ -1,0 +1,61 @@
+# Cliente: WSL2 Ubuntu (Entorno A), solo con ca.crt (sin clave privada). /etc/hosts sin modificar: se usa curl --resolve.
+$ curl --version | head -1
+curl 8.18.0 (x86_64-pc-linux-gnu) libcurl/8.18.0 OpenSSL/3.5.5 zlib/1.3.1 brotli/1.2.0 zstd/1.5.7 libidn2/2.3.8 libpsl/0.21.2 libssh2/1.11.1 nghttp2/1.68.0 librtmp/2.3 mit-krb5/1.22.1 OpenLDAP/2.6.10
+
+# 13.2 Redireccion HTTP -> HTTPS (ruta y host conservados)
+$ curl -I --resolve "${DOMINIO}:80:${IP_SERVIDOR}" "http://${DOMINIO}/"
+HTTP/1.1 301 Moved Permanently
+Server: nginx/1.30.6
+Date: Mon, 19 Oct 2026 18:24:18 GMT
+Content-Type: text/html
+Content-Length: 169
+Connection: keep-alive
+Location: https://portal.proyecto.test/
+
+$ curl -I --resolve "${DOMINIO}:80:${IP_SERVIDOR}" "http://${DOMINIO}/wp-login.php?redirect_to=1"
+HTTP/1.1 301 Moved Permanently
+Location: https://portal.proyecto.test/wp-login.php?redirect_to=1
+
+# 13.3 HTTPS con curl --cacert (sin -k)
+$ curl -v --cacert "$CA_CERT" --resolve "${DOMINIO}:443:${IP_SERVIDOR}" "https://${DOMINIO}/" -o /dev/null
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+* TLSv1.3 (IN), TLS change cipher, Change cipher spec (1):
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384 / X25519MLKEM768 / RSASSA-PSS
+*   subject: CN=portal.proyecto.test
+*   issuer: C=ES; O=Proyecto ExP89 Lab; CN=ExP89 Lab Root CA
+*   subjectAltName: "portal.proyecto.test" matches cert's "portal.proyecto.test"
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+< HTTP/1.1 200 OK
+exit code curl: 0
+
+# Prueba negativa: sin --cacert (la CA no esta en el almacen del sistema) debe FALLAR
+curl: (60) SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)
+More details here: https://curl.se/docs/sslcerts.html
+
+# 13.4 openssl s_client
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "${DOMINIO}" -CAfile "$CA_CERT" -verify_hostname "${DOMINIO}" -verify_return_error -brief </dev/null
+Connecting to 192.168.1.109
+CONNECTION ESTABLISHED
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: CN=portal.proyecto.test
+Hash used: SHA256
+Signature type: rsa_pss_rsae_sha256
+Verification: OK
+Verified peername: portal.proyecto.test
+Negotiated TLS1.3 group: X25519MLKEM768
+DONE
+
+# Versiones TLS aceptadas / rechazadas
+tls1: rechazado
+tls1_1: rechazado
+tls1_2: New, TLSv1.2, Cipher is ECDHE-RSA-AES256-GCM-SHA384
+tls1_3: New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
