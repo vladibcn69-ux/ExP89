@@ -1,0 +1,75 @@
+# Prueba de reproducibilidad: clon limpio del repositorio en una carpeta vacia (2026-10-19T19:10:17Z)
+$ git clone <repositorio> carpeta_vacia  ->  commit 9cd0c7f, 47 ficheros versionados
+
+## 1) Estructura frente a la orientativa (Estructura_01.png)
+existe  README.md
+existe  docker-compose.yml
+existe  .env.example
+existe  .gitignore
+existe  nginx/default.conf
+existe  scripts
+existe  suricata/local.rules
+existe  pki/ca.crt
+existe  pki/servidor.crt
+existe  pki/servidor.csr
+existe  pki/servidor.ext
+existe  docs/mf0489/fase1-arquitectura.md
+existe  docs/mf0489/fase2-pki.md
+existe  docs/mf0489/fase3-https-docker.md
+existe  docs/mf0489/fase4-auditoria-tls-monitorizacion.md
+existe  docs/mf0489/fase5-entrega-final.md
+existe  docs/mf0489/guia-despliegue.md
+existe  docs/mf0489/arquitectura-final.png
+existe  docs/mf0489/evidencias/fase2
+existe  docs/mf0489/evidencias/fase3
+existe  docs/mf0489/evidencias/fase4
+existe  docs/mf0489/evidencias/fase5
+ficheros adicionales respecto a la estructura orientativa: .gitattributes docs/mf0489/arquitectura-final.dot 
+
+## 2) .env a partir de .env.example y docker compose config --quiet (comandos de la guia, seccion 5)
+variables definidas: PORTAL_FQDN DB_NAME DB_USER DB_PASSWORD DB_ROOT_PASSWORD WP_ADMIN_USER WP_ADMIN_PASSWORD   | marcadores 'cambiar_esto' restantes: 0
+docker compose config --quiet (Compose 5.6.0) con .env generado: OK
+docker compose config --quiet con .env.example sin editar: OK
+
+## 3) Scripts: sintaxis y bit ejecutable
+ok  scripts/ca-crear.sh  modo 100755
+ok  scripts/comprobar-despliegue.sh  modo 100755
+ok  scripts/pki-emitir.sh  modo 100755
+ok  scripts/pki-instalar.sh  modo 100755
+ok  scripts/pki-servidor-crear.sh  modo 100755
+ok  scripts/verificar-https.sh  modo 100755
+
+## 4) Ficheros y scripts citados en la guia y el README existen
+existe  .env.example
+existe  docker-compose.yml
+existe  docs/mf0489/arquitectura-final.dot
+existe  docs/mf0489/arquitectura-final.png
+existe  docs/mf0489/fase1-arquitectura.md
+existe  docs/mf0489/fase2-pki.md
+existe  docs/mf0489/fase3-https-docker.md
+existe  docs/mf0489/fase4-auditoria-tls-monitorizacion.md
+existe  docs/mf0489/fase5-entrega-final.md
+existe  docs/mf0489/guia-despliegue.md
+existe  nginx/default.conf
+existe  scripts/ca-crear.sh
+existe  scripts/comprobar-despliegue.sh
+existe  scripts/pki-emitir.sh
+existe  scripts/pki-instalar.sh
+existe  scripts/pki-servidor-crear.sh
+existe  scripts/verificar-https.sh
+existe  suricata/local.rules
+comandos de la guia que invocan scripts del repositorio: scripts/ca-crear.sh scripts/pki-emitir.sh scripts/pki-servidor-crear.sh scripts/verificar-https.sh sudo scripts/comprobar-despliegue.sh sudo scripts/pki-instalar.sh 
+
+## 5) Enlaces relativos de README y docs
+enlaces rotos: 0
+
+## 6) Secretos y proyectos ajenos en el clon
+marcadores de clave privada PEM en el arbol: 0; ficheros *.key/.env/*.pcap/*.sql: 0
+referencias a proyectos ajenos en el arbol de trabajo: 0
+referencias a proyectos ajenos en el historial de commits: 0
+
+## 7) Comprobacion del clon en el servidor (carpeta temporal, nada se arranca)
+ficheros del clon: 48
+docker compose config --quiet con .env.example en el servidor (Compose 2.40.3+ds1-0ubuntu1): OK
+(docker compose ps -a muestra los 3 contenedores del proyecto exp89 ya existente por compartir nombre de proyecto; esta prueba no crea ninguno)
+carpeta temporal y tarball eliminados

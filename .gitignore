@@ -7,3 +7,5 @@
 backups/
 *.sql
 *.gz
+*.pcap
+.ca_pass

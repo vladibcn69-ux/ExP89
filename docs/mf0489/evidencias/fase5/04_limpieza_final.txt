@@ -1,0 +1,49 @@
+# Limpieza final (despues del ultimo check): eliminar las entradas de prueba de WordPress
+# Hora: 2026-10-19T19:12:38Z
+
+## Antes
+ID	post_title	post_status	post_type
+5	Prueba ExP89 persistencia	publish	post
+6	Prueba ExP89 persistencia	inherit	revision
+7	Prueba ExP89 persistencia 2	publish	post
+8	Prueba ExP89 persistencia 2	inherit	revision
+wp.deletePost id=5 por HTTPS (--cacert) -> <boolean>1</boolean>
+wp.deletePost id=7 por HTTPS (--cacert) -> <boolean>1</boolean>
+
+## Despues
+entradas_de_prueba_restantes
+4
+ID	post_title	post_status
+1	Hello world!	publish
+5	Prueba ExP89 persistencia	trash
+7	Prueba ExP89 persistencia 2	trash
+usuarios
+1
+
+## La aplicacion sigue funcionando
+GET https://portal.proyecto.test/ -> HTTP 200 (verify=0)
+GET https://portal.proyecto.test/wp-login.php -> HTTP 200 (verify=0)
+GET https://portal.proyecto.test/?rest_route=/ -> HTTP 200 (verify=0)
+NAME              STATUS
+exp89-mariadb     Up 47 minutes (healthy)
+exp89-nginx       Up 47 minutes
+exp89-wordpress   Up 47 minutes
+
+## Segunda pasada: la primera llamada solo las movio a la papelera (estado 'trash'); borrar una entrada ya en la papelera la elimina definitivamente
+wp.deletePost id=5 (desde la papelera) -> <boolean>1</boolean>
+wp.deletePost id=7 (desde la papelera) -> <boolean>1</boolean>
+
+## Despues (definitivo)
+entradas_de_prueba_restantes
+0
+ID	post_title	post_status	post_type
+1	Hello world!	publish	post
+
+## La aplicacion sigue funcionando
+GET https://portal.proyecto.test/ -> HTTP 200 (verify=0)
+GET https://portal.proyecto.test/wp-login.php -> HTTP 200 (verify=0)
+GET https://portal.proyecto.test/?rest_route=/ -> HTTP 200 (verify=0)
+NAME              STATUS
+exp89-mariadb     Up 47 minutes (healthy)
+exp89-nginx       Up 47 minutes
+exp89-wordpress   Up 47 minutes

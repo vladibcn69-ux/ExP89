@@ -1,0 +1,221 @@
+# ExP 89 - Fase 5 - Ultimo check (extremo a extremo)
+# Fecha: 2026-10-19T19:11:40Z · commit evaluado: 9cd0c7f
+
+## 1. Diagrama definitivo (coherencia con docker-compose.yml)
+3530 docs/mf0489/arquitectura-final.dot
+160439 docs/mf0489/arquitectura-final.png
+  '10.89.1.0/24' en el diagrama: 1
+  '10.89.2.0/24' en el diagrama: 1
+  'internal: true' en el diagrama: 1
+  'enp0s3' en el diagrama: 3
+  'ECDHE' en el diagrama: 1
+  'exp89-nginx' en el diagrama: 1
+  'exp89-wordpress' en el diagrama: 1
+  'exp89-mariadb' en el diagrama: 1
+  'wordpress:6-php8.3-apache' en el diagrama: 1
+  'mariadb:11.4' en el diagrama: 1
+  'nginx:stable-alpine' en el diagrama: 1
+  subredes en docker-compose.yml: 10.89.1.0/24 10.89.2.0/24 | internal: 1
+  imagenes en docker-compose.yml: nginx:stable-alpine wordpress:6-php8.3-apache mariadb:11.4 
+
+## 2. Despliegue real en uso
+$ docker compose ls
+NAME                STATUS              CONFIG FILES
+exp89               running(3)          /home/ub_srv_student/exp89/docker-compose.yml
+$ docker ps --filter name=exp89
+NAMES             IMAGE                       STATUS
+exp89-nginx       nginx:stable-alpine         Up 42 minutes
+exp89-wordpress   wordpress:6-php8.3-apache   Up 42 minutes
+exp89-mariadb     mariadb:11.4                Up 42 minutes (healthy)
+$ docker network ls | grep exp89; docker volume ls | grep exp89
+exp89_back bridge
+exp89_front bridge
+exp89_db_data
+exp89_wp_data
+directorio del despliegue: ~/exp89 -> .env .env.example docker-compose.yml nginx scripts 
+
+## 3. Certificados instalados
+
+-rw-r--r-- 1 root root 1809 Oct 19 18:08 /etc/ssl/certs/servidor.crt
+-rw-r--r-- 1 root root 1968 Oct 19 18:08 /etc/ssl/mf0489/ca.crt
+-rw------- 1 root root 2484 Oct 19 18:08 /etc/ssl/private/servidor.key
+subject=CN=portal.proyecto.test
+issuer=C=ES, O=Proyecto ExP89 Lab, CN=ExP89 Lab Root CA
+notBefore=Oct 19 18:07:28 2026 GMT
+notAfter=Oct 19 18:07:28 2027 GMT
+X509v3 Basic Constraints: critical
+    CA:FALSE
+X509v3 Extended Key Usage: 
+    TLS Web Server Authentication
+X509v3 Subject Alternative Name: 
+    DNS:portal.proyecto.test
+huella SHA-256 servidor.crt instalado: AB:77:A7:F2:11:4C:5A:2A:B5:A4:0B:2E:09:DC:E6:48:66:00:6C:6C:A2:5D:E8:D9:4C:AD:C6:68:37:A1:1E:2A
+huella SHA-256 ca.crt instalado      : 41:9C:B6:5D:D7:6A:D1:4F:29:8E:F5:3D:6F:D8:70:DD:B0:8D:0E:6D:87:86:F0:D2:B5:79:E6:84:FB:31:EA:84
+/etc/ssl/certs/servidor.crt: OK
+
+## 4. Coherencia de configuracion: repositorio frente a servidor (sha256)
+IGUAL      docker-compose.yml  ==  /home/ub_srv_student/exp89/docker-compose.yml
+IGUAL      nginx/default.conf  ==  /home/ub_srv_student/exp89/nginx/default.conf
+IGUAL      .env.example  ==  /home/ub_srv_student/exp89/.env.example
+IGUAL      suricata/local.rules  ==  /etc/suricata/rules/local.rules
+IGUAL      pki/ca.crt  ==  /etc/ssl/mf0489/ca.crt
+IGUAL      pki/servidor.crt  ==  /etc/ssl/certs/servidor.crt
+IGUAL      scripts/ca-crear.sh  ==  /home/ub_srv_student/exp89/scripts/ca-crear.sh
+IGUAL      scripts/comprobar-despliegue.sh  ==  /home/ub_srv_student/exp89/scripts/comprobar-despliegue.sh
+IGUAL      scripts/pki-emitir.sh  ==  /home/ub_srv_student/exp89/scripts/pki-emitir.sh
+IGUAL      scripts/pki-instalar.sh  ==  /home/ub_srv_student/exp89/scripts/pki-instalar.sh
+IGUAL      scripts/pki-servidor-crear.sh  ==  /home/ub_srv_student/exp89/scripts/pki-servidor-crear.sh
+IGUAL      scripts/verificar-https.sh  ==  /home/ub_srv_student/exp89/scripts/verificar-https.sh
+nginx -T efectivo frente al fichero montado:
+IGUAL (configuracion efectiva = fichero)
+dominio coherente: SAN=DNS:portal.proyecto.test, server_name=portal.proyecto.test, PORTAL_FQDN=portal.proyecto.test
+suricata.yaml: 18: HOME_NET: "[192.168.1.109]" ; 2312:  - /etc/suricata/rules/local.rules
+
+(Nota: una primera ejecucion de esta comparacion detecto que el servidor tenia una version antigua de scripts/verificar-https.sh; se sincronizo y se repitio: resultado final sin diferencias.)
+
+## 5. Procedimiento de recuperacion
+  guia-despliegue.md, seccion 8: 1 seccion; prueba real en evidencias/fase5/01_recuperacion_backup_bbdd.txt
+  posts_restaurados	posts_originales
+  8	8
+
+## 6. Reproducibilidad
+  ver evidencias/fase5/02_reproducibilidad.txt (clon limpio, .env desde .env.example, compose config, scripts, enlaces, secretos)
+
+## 7 (servidor). Claves privadas en el servidor
+$ sudo find / -xdev ( -name servidor.key -o -name ca.key ) 2>/dev/null
+/etc/ssl/private/servidor.key
+/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/220/fs/etc/nginx/certs/servidor.key
+(solo debe aparecer /etc/ssl/private/servidor.key; ca.key no debe existir; no queda copia temporal en ~/mf0489)
+ca.crt
+servidor.crt
+servidor.csr
+
+-rw------- root root /etc/ssl/private/servidor.key
+
+(capa del contenedor: la segunda ruta es el punto de montaje vacio, no una copia)
+$ sudo ls -l <capa del contenedor>/etc/nginx/certs/
+
+total  0
+-rw-r--r-- 0 servidor.crt
+-rw-r--r-- 0 servidor.key
+
+tamano en bytes de la 'servidor.key' de la capa: 0  (0 = fichero vacio, solo punto de montaje)
+
+contiene marcador de clave privada: 0
+
+comparacion con la clave real: distinta (no es copia)
+$ docker inspect exp89-nginx: mount de la clave
+/etc/ssl/private/servidor.key -> /etc/nginx/certs/servidor.key modo=ro RW=false
+capa de la imagen nginx:stable-alpine contiene alguna clave: 0 ficheros en /etc/nginx/certs (imagen sin montajes)
+--- lado WSL (Entorno A) y repositorio
+-rw------- /home/student_vo/ca_root-pki/ca/private/ca.key
+  ca.key cifrada (cabecera ENCRYPTED, sin mostrar contenido): 1
+  intento con contrasena incorrecta: rechazado (correcto)
+  *.key / *.pem / .env / *.pcap / ca_pass* bajo C:\work\ExP89 (versionados o no): 0
+  marcadores de clave privada PEM en el arbol de trabajo: 0
+
+## 8. .gitignore frente a Gitignore_01.png
+  contenido (como mínimo los nueve patrones de la actividad, y algunos más: *.pcap, .ca_pass):
+    .env
+    **/.env
+    **/*.key
+    **/private/
+    *.p12
+    *.pfx
+    backups/
+    *.sql
+    *.gz
+    *.pcap
+    .ca_pass
+  comprobación con git check-ignore -v (rutas de ejemplo; no se crean ficheros):
+    .env -> IGNORADO por la línea 2 (**/.env)
+    sub/.env -> IGNORADO por la línea 2 (**/.env)
+    a/x.key -> IGNORADO por la línea 3 (**/*.key)
+    a/private/y.txt -> IGNORADO por la línea 4 (**/private/)
+    z.p12 -> IGNORADO por la línea 5 (*.p12)
+    z.pfx -> IGNORADO por la línea 6 (*.pfx)
+    backups/b.txt -> IGNORADO por la línea 7 (backups/)
+    dump.sql -> IGNORADO por la línea 8 (*.sql)
+    dump.sql.gz -> IGNORADO por la línea 9 (*.gz)
+    captura.pcap -> IGNORADO por la línea 10 (*.pcap)
+    sub/captura.pcap -> IGNORADO por la línea 10 (*.pcap)
+    .ca_pass -> IGNORADO por la línea 11 (.ca_pass)
+    sub/.ca_pass -> IGNORADO por la línea 11 (.ca_pass)
+    ok.txt -> no ignorado (esperado solo para ok.txt)
+
+## 9. Lo publicado en GitHub
+  https://github.com/vladibcn69-ux/ExP89 - visibilidad: PUBLIC
+  commits publicados:
+    404800f VolodymyrOsebchuk <vladibcn69@gmail.com> Fase 2: PKI con OpenSSL (CA, CSR, certificado, instalacion y evidencias)
+    223b6e3 VolodymyrOsebchuk <vladibcn69@gmail.com> Fase 1: diagrama de arquitectura y documentacion
+    02bf2f6 VolodymyrOsebchuk <vladibcn69@gmail.com> Estructura inicial del proyecto, .gitignore y README
+  ficheros publicados: 26
+  contenido publicado: marcadores de clave privada PEM=0, ficheros .key/.env/.pcap/.sql=0, password servidor=0, lineas de coautoria o asistentes=0, autores: VolodymyrOsebchuk <vladibcn69@gmail.com>
+  Fases 3, 4 y 5: solo en local (ahead de origin: 5 commits); pendiente de confirmacion de push
+
+## 10-11. Confianza HTTPS y redireccion HTTP -> HTTPS (cliente)
+# cliente WSL2 con solo ca.crt (IP_SERVIDOR=192.168.1.109 CA_CERT=./ca.crt scripts/verificar-https.sh)
+== 1. Redireccion HTTP -> HTTPS (host y ruta conservados)
+HTTP/1.1 301 Moved Permanently
+Location: https://portal.proyecto.test/prueba?x=1
+[ OK ] redireccion 301/308 con Location https y ruta conservada
+== 2. HTTPS con curl --cacert (sin -k)
+HTTP=200 verify=0
+[ OK ] HTTPS verificado (certificado, nombre y cadena)
+== 3. openssl s_client (version TLS, cipher y verificacion)
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Verification: OK
+Verified peername: portal.proyecto.test
+[ OK ] s_client: verificacion correcta
+== 4. Versiones de TLS
+[ OK ] tls1_2 aceptado
+[ OK ] tls1_3 aceptado
+[ OK ] tls1 rechazado por el servidor (alert protocol_version)
+[ OK ] tls1_1 rechazado por el servidor (alert protocol_version)
+== 5. Puertos que no deben estar abiertos desde el cliente
+[ OK ] puerto 3306 cerrado
+[ OK ] puerto 8080 cerrado
+
+RESULTADO: todo correcto
+exit=0
+
+## 12. Prueba funcional de la aplicacion
+GET https://portal.proyecto.test/ -> HTTP 200 (verify=0)
+GET https://portal.proyecto.test/wp-login.php -> HTTP 200 (verify=0)
+GET https://portal.proyecto.test/?rest_route=/ -> HTTP 200 (verify=0)
+contenido de la portada contiene el titulo del sitio: <title>ExP89 Portal
+usuarios
+1
+entradas_publicadas
+3
+estado de los contenedores:
+NAME              STATUS
+exp89-mariadb     Up 45 minutes (healthy)
+exp89-nginx       Up 45 minutes
+exp89-wordpress   Up 45 minutes
+
+## 13. Configuracion y monitorizacion
+$ docker compose exec reverse-proxy nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+$ sudo suricata -T -c /etc/suricata/suricata.yaml
+W: detect: rule 4890001: SYN-only to port(s) 443:443 w/o direction specified, disabling for toclient direction
+i: mpm-hs: Rule group caching - loaded: 118 newly cached: 0 total cacheable: 118
+i: suricata: Configuration provided was successfully loaded. Exiting.
+$ systemctl is-active suricata
+active
+formato de log de Nginx:
+log_format mf0489 '$time_iso8601 client=$remote_addr:$remote_port '
+                  'request="$request" status=$status '
+                  'tls=$ssl_protocol cipher=$ssl_cipher';
+# access_log se declara dentro de cada server: asi sustituye al access_log "main" de nginx.conf
+alertas y registros recientes:
+ultima alerta SID 4890001 (fast.log, generada por la verificacion anterior):
+10/19/2026-19:11:56.963040  [**] [1:4890001:1] MF0489 Conexion HTTPS observada [**] [Classification: Not Suspicious Traffic] [Priority: 3] {TCP} 192.168.1.103:52864 -> 192.168.1.109:443
+ultimas lineas del log de Nginx (docker compose logs, formato mf0489):
+2026-10-19T19:10:49+00:00 client=10.89.1.1:33742 request="GET / HTTP/1.1" status=200 tls=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384
+2026-10-19T19:11:56+00:00 client=192.168.1.103:52828 request="HEAD /prueba?x=1 HTTP/1.1" status=301 tls=- cipher=-
+2026-10-19T19:11:56+00:00 client=192.168.1.103:52818 request="GET / HTTP/1.1" status=200 tls=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384
+
+## RESULTADO: los 13 puntos del ultimo check superados.

@@ -1,0 +1,26 @@
+# Prueba del procedimiento de recuperacion (guia-despliegue.md, seccion 8): copia de la BBDD y restauracion en una base TEMPORAL
+# La base 'wordpress' no se modifica; el volcado queda fuera del repositorio (~/backups_exp89, permisos 600).
+
+$ docker compose exec -T mariadb sh -c 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --single-transaction wordpress' > $F
+exit=0 bytes=103541
+primeras lineas (cabecera, sin datos):
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19-11.4.13-MariaDB, for debian-linux-gnu (x86_64)
+--
+
+== prueba de restauracion en una base TEMPORAL (la base wordpress no se toca)
+posts_restaurados	posts_originales
+8	8
+Database
+information_schema
+mysql
+performance_schema
+sys
+wordpress
+-rw-r--r-- 1077 default.conf.fase3-2026-10-19_1840
+-rw-r--r-- 1473 default.conf.fase4a-2026-10-19_1845
+-rw-r--r-- 1699 default.conf.fase4b-2026-10-19_1901
+-rw-r--r-- 2156 docker-compose.yml
+drwxrwxr-x 4096 nginx
+drwxrwxr-x 4096 suricata-2026-10-19_1840
+-rw------- 103541 wordpress-2026-10-19_1905.sql
