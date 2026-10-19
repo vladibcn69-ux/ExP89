@@ -1,0 +1,45 @@
+
+# 6.1 Instalacion en rutas definitivas
+
+$ sudo ls -l /etc/ssl/private/servidor.key; ls -l /etc/ssl/certs/servidor.crt /etc/ssl/mf0489/ca.crt
+-rw------- 1 root root 2484 Oct 19 18:08 /etc/ssl/private/servidor.key
+-rw-r--r-- 1 root root 1809 Oct 19 18:08 /etc/ssl/certs/servidor.crt
+-rw-r--r-- 1 root root 1968 Oct 19 18:08 /etc/ssl/mf0489/ca.crt
+
+# 6.2 Verificacion SIN confiar en la CA
+$ openssl verify -purpose sslserver -verify_hostname portal.proyecto.test /etc/ssl/certs/servidor.crt
+CN=portal.proyecto.test
+error 20 at 0 depth lookup: unable to get local issuer certificate
+error /etc/ssl/certs/servidor.crt: verification failed
+
+# 6.3 Verificacion con la CA del laboratorio
+$ openssl verify -CAfile /etc/ssl/mf0489/ca.crt -purpose sslserver -verify_hostname portal.proyecto.test /etc/ssl/certs/servidor.crt
+/etc/ssl/certs/servidor.crt: OK
+
+# 6.4 Nombre DNS incorrecto (fallo esperado)
+$ openssl verify -CAfile ... -verify_hostname servidor-equivocado.test ...
+CN=portal.proyecto.test
+error 62 at 0 depth lookup: hostname mismatch
+error /etc/ssl/certs/servidor.crt: verification failed
+
+# 6.5 Fechas de validez
+$ openssl x509 -in /etc/ssl/certs/servidor.crt -noout -dates
+notBefore=Oct 19 18:07:28 2026 GMT
+notAfter=Oct 19 18:07:28 2027 GMT
+$ openssl x509 -in /etc/ssl/certs/servidor.crt -noout -checkend 0
+Certificate will not expire
+(vigente ahora)
+fecha del servidor: 2026-10-19 18:08:12 UTC
+
+# 6.6 Correspondencia clave privada / certificado (SHA-256 de la clave publica)
+
+clave privada instalada : SHA2-256(stdin)= 14c929f49a4006dfff683c7e4bc77bdfc5f9262b0d8f9090a3014a9bbca98580
+certificado             : SHA2-256(stdin)= 14c929f49a4006dfff683c7e4bc77bdfc5f9262b0d8f9090a3014a9bbca98580
+RESULTADO: COINCIDEN
+
+# 6.8 Eliminar copia temporal de la clave y conservar CSR
+$ ls -l ~/mf0489/
+total 12
+-rw-r--r-- 1 ub_srv_student ub_srv_student 1968 Oct 19 18:07 ca.crt
+-rw-r--r-- 1 ub_srv_student ub_srv_student 1809 Oct 19 18:07 servidor.crt
+-rw------- 1 ub_srv_student ub_srv_student 1322 Oct 19 18:07 servidor.csr

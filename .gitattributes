@@ -1,0 +1,4 @@
+*.crt text eol=lf
+*.csr text eol=lf
+*.ext text eol=lf
+*.sh text eol=lf

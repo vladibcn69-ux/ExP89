@@ -1,0 +1,58 @@
+# 5.1 Revision de la CSR recibida
+$ openssl req -in solicitudes/servidor.csr -text -noout -verify
+Certificate request self-signature verify OK
+        Subject: CN=portal.proyecto.test
+                Public-Key: (3072 bit)
+                    DNS:portal.proyecto.test
+
+# 5.2 servidor.ext
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+subjectAltName=DNS:portal.proyecto.test
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+
+# 5.3 Firma
+$ openssl x509 -req -in solicitudes/servidor.csr -CA ca.crt -CAkey private/ca.key -CAcreateserial -out emitidos/servidor.crt -days 365 -sha256 -extfile servidor.ext
+Certificate request self-signature ok
+subject=CN=portal.proyecto.test
+
+# 5.4 Inspeccion del certificado emitido
+subject=CN=portal.proyecto.test
+issuer=C=ES, O=Proyecto ExP89 Lab, CN=ExP89 Lab Root CA
+notBefore=Oct 19 18:07:28 2026 GMT
+notAfter=Oct 19 18:07:28 2027 GMT
+serial=02472349EC775D2BB8E335C7B290244F52C73F34
+        Signature Algorithm: sha256WithRSAEncryption
+                Public-Key: (3072 bit)
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication
+            X509v3 Subject Alternative Name: 
+                DNS:portal.proyecto.test
+            X509v3 Subject Key Identifier: 
+            X509v3 Authority Key Identifier: 
+    Signature Algorithm: sha256WithRSAEncryption
+
+$ openssl verify -CAfile ca.crt emitidos/servidor.crt
+emitidos/servidor.crt: OK
+
+# 5.5 Archivos de la CA
+-rw-r--r-- 1 usuario usuario 1968 Oct 19 20:07 ca.crt
+-rw------- 1 usuario usuario  216 Oct 19 20:07 servidor.ext
+
+emitidos:
+total 4
+-rw-r--r-- 1 usuario usuario 1809 Oct 19 20:07 servidor.crt
+
+private:
+total 4
+-rw------- 1 usuario usuario 3446 Oct 19 20:07 ca.key
+
+solicitudes:
+total 4
+-rwx------ 1 usuario usuario 1322 Oct 19 20:07 servidor.csr

@@ -1,0 +1,9 @@
+# 3.2 Clave privada de la CA (no se muestra su contenido)
+$ ls -l private/ca.key
+-rw------- 1 student_vo student_vo 3446 Oct 19 20:07 private/ca.key
+$ head -1 private/ca.key  (solo cabecera PEM)
+(formato PEM cifrado: cabecera "ENCRYPTED"; contenido no mostrado)
+$ openssl pkey -in private/ca.key -check -noout
+Key is valid
+$ openssl pkey -in private/ca.key -text -noout | head -1  (tamano)
+Private-Key: (4096 bit, 2 primes)

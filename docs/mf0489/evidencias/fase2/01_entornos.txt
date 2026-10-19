@@ -1,0 +1,14 @@
+# 2.1 Preparacion de entornos
+Nombre DNS seleccionado: portal.proyecto.test
+
+Entorno A (CA): WSL2 Ubuntu en el host Windows, ruta ~/ca_root-pki/ca/
+$ hostname; openssl version
+DESKTOP-1PPHPN1
+OpenSSL 3.5.5 27 Jan 2026 (Library: OpenSSL 3.5.5 27 Jan 2026)
+PRETTY_NAME="Ubuntu 26.04.1 LTS"
+
+Entorno B (servidor): Ubuntu Server (VM VirtualBox MF0488), 192.168.1.109, ruta ~/mf0489/
+$ hostname; openssl version
+UbuntuServer
+OpenSSL 3.5.5 27 Jan 2026 (Library: OpenSSL 3.5.5 27 Jan 2026)
+PRETTY_NAME="Ubuntu 26.04.1 LTS"

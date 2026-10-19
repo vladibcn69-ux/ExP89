@@ -1,0 +1,29 @@
+# 4 Entorno B - Ubuntu Server
+$ hostname; openssl version
+UbuntuServer
+OpenSSL 3.5.5 27 Jan 2026 (Library: OpenSSL 3.5.5 27 Jan 2026)
+
+# 4.1-4.2 Clave privada del servidor (no se muestra su contenido)
+$ ls -l ~/mf0489/servidor.key
+-rw------- 1 ub_srv_student ub_srv_student 2484 Oct 19 18:07 servidor.key
+$ openssl pkey -in servidor.key -check -noout
+Key is valid
+$ openssl pkey -in servidor.key -text -noout | head -1
+Private-Key: (3072 bit, 2 primes)
+
+# 4.3 CSR
+$ ls -l ~/mf0489/
+total 8
+-rw------- 1 ub_srv_student ub_srv_student 1322 Oct 19 18:07 servidor.csr
+-rw------- 1 ub_srv_student ub_srv_student 2484 Oct 19 18:07 servidor.key
+
+# 4.4 Verificacion de la CSR
+$ openssl req -in servidor.csr -text -noout -verify
+Certificate request self-signature verify OK
+        Subject: CN=portal.proyecto.test
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (3072 bit)
+            Requested Extensions:
+                X509v3 Subject Alternative Name: 
+                    DNS:portal.proyecto.test
+    Signature Algorithm: sha256WithRSAEncryption
