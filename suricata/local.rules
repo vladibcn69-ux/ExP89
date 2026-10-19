@@ -1,0 +1,5 @@
+# ExP 89 - MF0489 - Regla local de laboratorio (Autor: Volodymyr Osebchuk)
+# Registra el INICIO de una conexion TCP (paquete SYN) hacia el puerto 443 del servidor protegido ($HOME_NET = 192.168.1.109).
+# No es una firma de ataque ni identifica ninguna herramienta: solo deja constancia de que se abrio una conexion.
+# Un SYN a 443 NO implica una peticion HTTPS valida ni un ataque, y Suricata no descifra la ruta HTTPS.
+alert tcp any any -> $HOME_NET 443 (msg:"MF0489 Conexion HTTPS observada"; flags:S; classtype:not-suspicious; sid:4890001; rev:1;)

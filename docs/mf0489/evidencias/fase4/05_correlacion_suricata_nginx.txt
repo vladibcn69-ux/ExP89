@@ -1,0 +1,39 @@
+# F4.5 Correlacion de la MISMA prueba entre Suricata (enp0s3) y Nginx (despues de terminar TLS)
+
+# Cliente (WSL2 172.23.211.123, tras NAT del host Windows)
+TAG=1792435555
+cliente_hora_local_inicio=2026-10-19T20:45:55.795446987+0200  (UTC: 2026-10-19T18:45:55.799743898Z)
+$ curl -v --cacert "$CA_CERT" --resolve "${DOMINIO}:443:${IP_SERVIDOR}" "https://${DOMINIO}/mf0489-correlacion-01?exp89_test=$TAG" -o /dev/null
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384 / X25519MLKEM768 / RSASSA-PSS
+> GET /mf0489-correlacion-01?exp89_test=1792435555 HTTP/1.1
+< HTTP/1.1 404 Not Found
+ruta_local=172.23.211.123:32862 -> 192.168.1.109:443 HTTP=404
+
+# Servidor
+== servidor: hora UTC actual 2026-10-19T18:46:03
+# Nginx: docker compose logs (linea de la peticion)
+2026-10-19T18:45:58+00:00 client=192.168.1.103:52828 request="GET /mf0489-correlacion-01?exp89_test=1792435555 HTTP/1.1" status=404 tls=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384
+
+# Suricata fast.log (alertas con SID 4890001 recientes)
+10/19/2026-18:44:12.850401  [**] [1:4890001:1] MF0489 Conexion HTTPS observada [**] [Classification: Not Suspicious Traffic] [Priority: 3] {TCP} 192.168.1.103:52870 -> 192.168.1.109:443
+10/19/2026-18:45:28.757660  [**] [1:4890001:1] MF0489 Conexion HTTPS observada [**] [Classification: Not Suspicious Traffic] [Priority: 3] {TCP} 192.168.1.103:52872 -> 192.168.1.109:443
+10/19/2026-18:45:58.081196  [**] [1:4890001:1] MF0489 Conexion HTTPS observada [**] [Classification: Not Suspicious Traffic] [Priority: 3] {TCP} 192.168.1.103:52828 -> 192.168.1.109:443
+
+# Suricata eve.json: alerta con SID 4890001 (jq)
+{"timestamp":"2026-10-19T18:44:12.850401+0000","event_type":"alert","src_ip":"192.168.1.103","src_port":52870,"dest_ip":"192.168.1.109","dest_port":443,"proto":"TCP","signature":"MF0489 Conexion HTTPS observada","sid":4890001,"rev":1,"action":"allowed"}
+{"timestamp":"2026-10-19T18:45:28.757660+0000","event_type":"alert","src_ip":"192.168.1.103","src_port":52872,"dest_ip":"192.168.1.109","dest_port":443,"proto":"TCP","signature":"MF0489 Conexion HTTPS observada","sid":4890001,"rev":1,"action":"allowed"}
+{"timestamp":"2026-10-19T18:45:58.081196+0000","event_type":"alert","src_ip":"192.168.1.103","src_port":52828,"dest_ip":"192.168.1.109","dest_port":443,"proto":"TCP","signature":"MF0489 Conexion HTTPS observada","sid":4890001,"rev":1,"action":"allowed"}
+
+# Suricata eve.json: evento tls de la misma conexion
+{"timestamp":"2026-10-19T18:45:28.771225+0000","src_ip":"192.168.1.103","src_port":52872,"dest_ip":"192.168.1.109","dest_port":443,"sni":"portal.proyecto.test","version":"TLS 1.3"}
+{"timestamp":"2026-10-19T18:45:58.092731+0000","src_ip":"192.168.1.103","src_port":52828,"dest_ip":"192.168.1.109","dest_port":443,"sni":"portal.proyecto.test","version":"TLS 1.3"}
+
+# Tabla de correlacion
+Campo                               | Suricata                                              | Nginx (docker compose logs reverse-proxy)
+Fecha y hora (UTC)                  | 2026-10-19T18:45:58.081196+0000 (SYN, alerta)         | 2026-10-19T18:45:58+00:00 (fin de la peticion, resolucion de 1 s)
+IP del cliente visible              | 192.168.1.103                                         | 192.168.1.103
+Puerto origen                       | 52828                                                 | 52828
+Direccion/puerto de destino         | 192.168.1.109:443                                     | 443 (Nginx); la peticion llega al contenedor reverse-proxy
+Accion o evento                     | SYN hacia 443 / SID 4890001 rev 1                     | GET /mf0489-correlacion-01?exp89_test=1792435555
+Resultado                           | Alerta de laboratorio (action: allowed)               | HTTP 404 (la ruta no existe; la peticion llego a Nginx)
+Informacion TLS / HTTP observable   | evento tls: SNI portal.proyecto.test, TLS 1.3, JA3    | tls=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384; ruta y metodo HTTP

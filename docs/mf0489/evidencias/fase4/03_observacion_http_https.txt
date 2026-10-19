@@ -1,0 +1,67 @@
+# F4.3 Observacion HTTP vs HTTPS desde la interfaz enp0s3 (punto de captura: Ubuntu Server 192.168.1.109)
+# Cliente: WSL2 (172.23.211.123) tras NAT del host Windows; el servidor ve al cliente como 192.168.1.103
+
+# Pruebas lanzadas desde el cliente
+$ curl -v --resolve "${DOMINIO}:80:${IP_SERVIDOR}" "http://${DOMINIO}/mf0489-prueba-http" -o /dev/null
+> GET /mf0489-prueba-http HTTP/1.1 | Host: portal.proyecto.test | < HTTP/1.1 301 Moved Permanently | Location: https://portal.proyecto.test/mf0489-prueba-http
+ruta_local=172.23.211.123:56910 -> 192.168.1.109:80 HTTP=301   (hora cliente 20:43:35+0200)
+$ curl -v --cacert "$CA_CERT" --resolve "${DOMINIO}:443:${IP_SERVIDOR}" "https://${DOMINIO}/mf0489-prueba-https" -o /dev/null
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384 | > GET /mf0489-prueba-https | < HTTP/1.1 404 Not Found
+ruta_local=172.23.211.123:37008 -> 192.168.1.109:443 HTTP=404  (hora cliente 20:44:10+0200)
+
+# 17.1 Interfaz monitorizada
+$ ip -br address
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+enp0s3           UP             192.168.1.109/24 metric 100 2a0c:5a82:6282:500:a00:27ff:fe22:fb77/64 fe80::a00:27ff:fe22:fb77/64 
+$ systemctl is-active suricata; grep -n "interface: enp0s3" /etc/suricata/suricata.yaml | head -2
+active
+660:  - interface: enp0s3
+854:  - interface: enp0s3
+
+# 17.2 HTTP visible en la interfaz externa
+$ sudo tcpdump -i enp0s3 -nn -s 0 -A "tcp port 80"   (captura guardada y leida con tcpdump -r; solo lineas relevantes)
+18:43:37.582720 IP 192.168.1.103.52890 > 192.168.1.109.80: Flags [S], seq 79199233, win 64240, options [mss 1460,sackOK,TS val 2465201462 ecr 0,nop,wscale 10], length 0
+18:43:37.582907 IP 192.168.1.109.80 > 192.168.1.103.52890: Flags [S.], seq 2980846148, ack 79199234, win 65160, options [mss 1460,sackOK,TS val 3478344479 ecr 2465201462,nop,w
+18:43:37.583291 IP 192.168.1.103.52890 > 192.168.1.109.80: Flags [.], ack 1, win 63, options [nop,nop,TS val 2465201463 ecr 3478344479], length 0
+18:43:37.583291 IP 192.168.1.103.52890 > 192.168.1.109.80: Flags [P.], seq 1:103, ack 1, win 63, options [nop,nop,TS val 2465201463 ecr 3478344479], length 102: HTTP: GET /mf0
+...7.SS.GET /mf0489-prueba-http HTTP/1.1
+Host: portal.proyecto.test
+User-Agent: curl/8.18.0
+18:43:37.583730 IP 192.168.1.109.80 > 192.168.1.103.52890: Flags [.], ack 103, win 128, options [nop,nop,TS val 3478344479 ecr 2465201463], length 0
+18:43:37.584540 IP 192.168.1.109.80 > 192.168.1.103.52890: Flags [P.], seq 1:392, ack 103, win 128, options [nop,nop,TS val 3478344480 ecr 2465201463], length 391: HTTP: HTTP/
+.SS ...7HTTP/1.1 301 Moved Permanently
+Location: https://portal.proyecto.test/mf0489-prueba-http
+18:43:37.585089 IP 192.168.1.103.52890 > 192.168.1.109.80: Flags [.], ack 392, win 63, options [nop,nop,TS val 2465201464 ecr 3478344480], length 0
+18:43:37.585089 IP 192.168.1.103.52890 > 192.168.1.109.80: Flags [F.], seq 103, ack 392, win 63, options [nop,nop,TS val 2465201465 ecr 3478344480], length 0
+18:43:37.585502 IP 192.168.1.109.80 > 192.168.1.103.52890: Flags [F.], seq 392, ack 104, win 128, options [nop,nop,TS val 3478344481 ecr 2465201465], length 0
+18:43:37.585990 IP 192.168.1.103.52890 > 192.168.1.109.80: Flags [.], ack 393, win 63, options [nop,nop,TS val 2465201465 ecr 3478344481], length 0
+
+# 17.3 HTTPS en la interfaz externa
+$ sudo tcpdump -i enp0s3 -nn -s 0 -A "tcp port 443"  (misma captura analizada)
+paquetes capturados: 21
+ocurrencias de la ruta '/mf0489-prueba-https' en texto claro: 0
+ocurrencias de 'GET ' / 'HTTP/1.1' en texto claro: 0
+ocurrencias del nombre 'portal.proyecto.test' (SNI del ClientHello, aun en claro): 1
+muestra -A de un paquete de datos cifrados (ilegible):
+18:44:12.859664 IP 192.168.1.103.52870 > 192.168.1.109.443: Flags [P.], seq 1581:1661, ack 3087, win 69, optio
+E.....@.?..4...g...m....f.L........E.P.....
+Y._...............E..y....L.25..J...]u.X.b...+.n..o.U./..Z...`.6.O.M.F[].".9CQ.........]
+18:44:12.860139 IP 192.168.1.103.52870 > 192.168.1.109.443: Flags [P.], seq 1661:1786, ack 3087, win 69, optio
+
+# 17.4 Eventos de Suricata para esas dos pruebas (cliente visto por el servidor: 192.168.1.103)
+$ jq -c ... /var/log/suricata/eve.json   (filtro: src_ip 192.168.1.103, puertos 80/443, tipos alert/http/tls/flow)
+{"timestamp":"2026-10-19T18:43:37.585089+0000","event_type":"http","src_ip":"192.168.1.103","src_port":52890,"dest_ip":"192.168.1.109","dest_port":80,"http_method":"GET","http_host":"portal.proyecto.test","http_url":"/mf0489-prueba-http","http_status":301}
+{"timestamp":"2026-10-19T18:44:12.850401+0000","event_type":"alert","src_ip":"192.168.1.103","src_port":52870,"dest_ip":"192.168.1.109","dest_port":443,"signature":"MF0489 Conexion HTTPS observada","sid":4890001,"rev":1,"pkts_toserver":1}
+{"timestamp":"2026-10-19T18:44:12.860490+0000","event_type":"tls","src_ip":"192.168.1.103","src_port":52870,"dest_ip":"192.168.1.109","dest_port":443,"tls_sni":"portal.proyecto.test","tls_version":"TLS 1.3","ja3":"32e4b8812cda0c0d50783b438492a769"}
+{"timestamp":"2026-10-19T18:44:43.562812+0000","event_type":"flow","src_ip":"192.168.1.103","src_port":52890,"dest_ip":"192.168.1.109","dest_port":80,"app_proto":"http","pkts_toserver":6,"flow_state":"closed"}
+{"timestamp":"2026-10-19T18:45:14.439267+0000","event_type":"flow","src_ip":"192.168.1.103","src_port":52870,"dest_ip":"192.168.1.109","dest_port":443,"app_proto":"tls","pkts_toserver":11,"flow_state":"closed"}
+
+# 17.5 Tabla comparativa (resultado real)
+Elemento observado desde enp0s3     | HTTP (puerto 80)                          | HTTPS (puerto 443)
+IP origen y destino                 | 192.168.1.103 -> 192.168.1.109            | 192.168.1.103 -> 192.168.1.109
+Puerto de conexion                  | 52890 -> 80                               | 52870 -> 443
+Metodo HTTP (GET, HEAD...)          | VISIBLE: GET                              | NO visible (0 ocurrencias de "GET ")
+Ruta solicitada                     | VISIBLE: /mf0489-prueba-http              | NO visible (0 ocurrencias de la ruta)
+Version TLS / metadatos TLS         | no aplica                                 | SNI portal.proyecto.test visible en el ClientHello; version TLS 1.3 y JA3 en el evento tls de Suricata
+Contenido HTTP en texto claro       | SI (peticion, cabeceras, 301 y Location)  | NO (datos de aplicacion cifrados)
+Eventos disponibles en Suricata     | http (metodo, host, URL, estado), flow    | alert (SID 4890001), tls (SNI, version, JA3), flow; ningun evento http

@@ -1,0 +1,104 @@
+# F4.2 Auditoria TLS
+# 16.1 Configuracion TLS efectivamente cargada por Nginx (nginx -T, solo directivas TLS)
+$ docker compose exec reverse-proxy nginx -T | grep -E "listen|server_name|ssl_"
+    listen 80;
+    server_name portal.proyecto.test;
+    listen 443 ssl;
+    server_name portal.proyecto.test;
+    ssl_certificate     /etc/nginx/certs/servidor.crt;
+    ssl_certificate_key /etc/nginx/certs/servidor.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+# Version de OpenSSL enlazada por Nginx
+built with OpenSSL 3.5.8
+
+# SERVIDOR (independiente del cliente): nmap --script ssl-enum-ciphers, ejecutado desde el host Windows
+> nmap -sT -Pn --script ssl-enum-ciphers --script-args tls.servername=portal.proyecto.test -p 443 192.168.1.109
+(nmap sondea TLS 1.0, 1.1, 1.2 y 1.3 con su propia pila; solo aparecen los protocolos que el servidor acepta)
+Starting Nmap 7.991 ( https://nmap.org ) at 2026-10-19 20:40 +0200
+Nmap scan report for 192.168.1.109
+Host is up (0.00s latency).
+
+PORT    STATE SERVICE
+443/tcp open  https
+| ssl-enum-ciphers: 
+|   TLSv1.2: 
+|     ciphers: 
+|       TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_ARIA_128_GCM_SHA256 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_ARIA_256_GCM_SHA384 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (secp256r1) - A
+|       TLS_RSA_WITH_AES_128_CBC_SHA (rsa 3072) - A
+|       TLS_RSA_WITH_AES_128_CBC_SHA256 (rsa 3072) - A
+|       TLS_RSA_WITH_AES_128_CCM (rsa 3072) - A
+|       TLS_RSA_WITH_AES_128_GCM_SHA256 (rsa 3072) - A
+|       TLS_RSA_WITH_AES_256_CBC_SHA (rsa 3072) - A
+|       TLS_RSA_WITH_AES_256_CBC_SHA256 (rsa 3072) - A
+|       TLS_RSA_WITH_AES_256_CCM (rsa 3072) - A
+|       TLS_RSA_WITH_AES_256_GCM_SHA384 (rsa 3072) - A
+|       TLS_RSA_WITH_ARIA_128_GCM_SHA256 (rsa 3072) - A
+|       TLS_RSA_WITH_ARIA_256_GCM_SHA384 (rsa 3072) - A
+|       TLS_RSA_WITH_CAMELLIA_128_CBC_SHA (rsa 3072) - A
+|       TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256 (rsa 3072) - A
+|       TLS_RSA_WITH_CAMELLIA_256_CBC_SHA (rsa 3072) - A
+|       TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256 (rsa 3072) - A
+|     compressors: 
+|       NULL
+|     cipher preference: client
+|   TLSv1.3: 
+|     ciphers: 
+|       TLS_AKE_WITH_AES_128_GCM_SHA256 (X25519MLKEM768) - A
+|       TLS_AKE_WITH_AES_256_GCM_SHA384 (X25519MLKEM768) - A
+|       TLS_AKE_WITH_CHACHA20_POLY1305_SHA256 (X25519MLKEM768) - A
+|     cipher preference: client
+|_  least strength: A
+
+Nmap done: 1 IP address (1 host up) scanned in 1.02 seconds
+
+Resultado: el servidor solo ofrece TLSv1.2 y TLSv1.3; no aparece ninguna cifra de TLSv1.0 ni TLSv1.1.
+
+# 16.2 / 16.3 Negociacion por version desde el cliente (openssl s_client)
+
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "$DOMINIO" -CAfile "$CA_CERT" -verify_hostname "$DOMINIO" -verify_return_error -tls1_2 -brief </dev/null
+Protocol version: TLSv1.2
+Ciphersuite: ECDHE-RSA-AES256-GCM-SHA384
+Peer certificate: CN=portal.proyecto.test
+Signature type: rsa_pss_rsae_sha256
+Verification: OK
+Verified peername: portal.proyecto.test
+
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "$DOMINIO" -CAfile "$CA_CERT" -verify_hostname "$DOMINIO" -verify_return_error -tls1_3 -brief </dev/null
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: CN=portal.proyecto.test
+Signature type: rsa_pss_rsae_sha256
+Verification: OK
+Verified peername: portal.proyecto.test
+
+$ openssl s_client ... -tls1_1 -brief </dev/null    (comando de la guia; politica por defecto del cliente)
+Connecting to 192.168.1.109
+401728E83F7C0000:error:0A0000BF:SSL routines:tls_setup_handshake:no protocols available:../ssl/statem/statem_lib.c:155:
+
+# CONTROL DEL CLIENTE: ¿puede este OpenSSL 3.5 hablar TLS 1.1/1.0 si se baja el nivel de seguridad?
+(servidor de prueba LOCAL en 127.0.0.1:14433, clave desechable en /tmp, borrada despues)
+cliente s_client -tls1 hacia servidor local tls1: verify error:num=18:self-signed certificate
+cliente s_client -tls1_1 hacia servidor local tls1_1: verify error:num=18:self-signed certificate
+
+# Prueba contra el servidor real con @SECLEVEL=0 (el cliente ya NO es el limite)
+
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "$DOMINIO" -tls1 -cipher 'ALL:@SECLEVEL=0' -brief </dev/null
+Connecting to 192.168.1.109
+401785C2BC770000:error:0A00042E:SSL routines:ssl3_read_bytes:tlsv1 alert protocol version:../ssl/record/rec_layer_s3.c:918:SSL alert number 70
+
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "$DOMINIO" -tls1_1 -cipher 'ALL:@SECLEVEL=0' -brief </dev/null
+Connecting to 192.168.1.109
+400751162F730000:error:0A00042E:SSL routines:ssl3_read_bytes:tlsv1 alert protocol version:../ssl/record/rec_layer_s3.c:918:SSL alert number 70

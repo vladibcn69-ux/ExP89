@@ -1,0 +1,56 @@
+# F4.1 Linea base HTTPS
+# 15.1 Estado de la infraestructura (Entorno B, 192.168.1.109)
+$ docker compose ps
+NAME              IMAGE                       COMMAND                  SERVICE         CREATED          STATUS                    PORTS
+exp89-mariadb     mariadb:11.4                "docker-entrypoint.s…"   mariadb         16 minutes ago   Up 14 minutes (healthy)   3306/tcp
+exp89-nginx       nginx:stable-alpine         "/docker-entrypoint.…"   reverse-proxy   16 minutes ago   Up 14 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+exp89-wordpress   wordpress:6-php8.3-apache   "docker-entrypoint.s…"   wordpress       16 minutes ago   Up 14 minutes             80/tcp
+
+$ ss -ltnp   (sin sudo no muestra el proceso; se filtra 22/80/443/3306)
+State  Recv-Q Send-Q Local Address:Port  Peer Address:Port
+LISTEN 0      4096         0.0.0.0:443        0.0.0.0:*   
+LISTEN 0      4096         0.0.0.0:22         0.0.0.0:*   
+LISTEN 0      4096         0.0.0.0:80         0.0.0.0:*   
+LISTEN 0      4096            [::]:443           [::]:*   
+LISTEN 0      4096            [::]:22            [::]:*   
+LISTEN 0      4096            [::]:80            [::]:*   
+
+$ sudo systemctl status suricata --no-pager (resumen)
+● suricata.service - Suricata IDS/IDP daemon
+     Loaded: loaded (/usr/lib/systemd/system/suricata.service; enabled; preset: enabled)
+     Active: active (running) since Mon 2026-10-19 17:45:10 UTC; 54min ago
+ Invocation: 46d56f9d362648df9a9f3455bd6e1834
+
+$ docker compose exec reverse-proxy nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+# 15.2 Cliente de pruebas: WSL2 Ubuntu (Entorno A), IP/ruta hacia el servidor
+$ ip -br a (cliente) / ip route get 192.168.1.109
+eth0             UP             172.23.211.123/20 fe80::215:5dff:fe60:b333/64 
+192.168.1.109 via 172.23.208.1 dev eth0 src 172.23.211.123 uid 1000 
+    cache 
+
+# 15.3 Conexion HTTPS real
+$ curl -v --cacert "$CA_CERT" --resolve "${DOMINIO}:443:${IP_SERVIDOR}" "https://${DOMINIO}/" -o /dev/null
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384 / X25519MLKEM768 / RSASSA-PSS
+*   subject: CN=portal.proyecto.test
+*   issuer: C=ES; O=Proyecto ExP89 Lab; CN=ExP89 Lab Root CA
+*   subjectAltName: "portal.proyecto.test" matches cert's "portal.proyecto.test"
+< HTTP/1.1 200 OK
+exit code curl: 0
+
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "${DOMINIO}" -CAfile "$CA_CERT" -verify_hostname "${DOMINIO}" -verify_return_error -brief </dev/null
+Connecting to 192.168.1.109
+CONNECTION ESTABLISHED
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: CN=portal.proyecto.test
+Hash used: SHA256
+Signature type: rsa_pss_rsae_sha256
+Verification: OK
+Verified peername: portal.proyecto.test
+Negotiated TLS1.3 group: X25519MLKEM768
+DONE
+
+Exit code s_client: 0

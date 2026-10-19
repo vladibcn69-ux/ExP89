@@ -1,0 +1,72 @@
+# F4.6 Comprobacion final de las medidas aplicadas (tras todas las pruebas y cambios de la Fase 4)
+# Hora: 2026-10-19T18:47:12Z
+
+$ docker compose ps
+NAME              IMAGE                       COMMAND                  SERVICE         CREATED          STATUS                    PORTS
+exp89-mariadb     mariadb:11.4                "docker-entrypoint.s…"   mariadb         23 minutes ago   Up 21 minutes (healthy)   3306/tcp
+exp89-nginx       nginx:stable-alpine         "/docker-entrypoint.…"   reverse-proxy   23 minutes ago   Up 21 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+exp89-wordpress   wordpress:6-php8.3-apache   "docker-entrypoint.s…"   wordpress       23 minutes ago   Up 21 minutes             80/tcp
+
+$ docker compose config --quiet
+OK
+
+$ docker compose exec reverse-proxy nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+$ sudo systemctl is-active suricata
+active
+
+$ sudo ls -l /etc/ssl/private/servidor.key /etc/ssl/certs/servidor.crt /etc/ssl/mf0489/ca.crt
+
+-rw-r--r-- 1 root root 1809 Oct 19 18:08 /etc/ssl/certs/servidor.crt
+-rw-r--r-- 1 root root 1968 Oct 19 18:08 /etc/ssl/mf0489/ca.crt
+-rw------- 1 root root 2484 Oct 19 18:08 /etc/ssl/private/servidor.key
+
+# Montajes de Nginx (RW=false => solo lectura)
+/etc/ssl/certs/servidor.crt -> /etc/nginx/certs/servidor.crt RW=false
+/etc/ssl/private/servidor.key -> /etc/nginx/certs/servidor.key RW=false
+/home/ub_srv_student/exp89/nginx/default.conf -> /etc/nginx/conf.d/default.conf RW=false
+
+# Puertos escuchando (ss -ltn)
+State  Recv-Q Send-Q Local Address:Port  Peer Address:Port
+LISTEN 0      4096         0.0.0.0:443        0.0.0.0:*   
+LISTEN 0      4096         0.0.0.0:22         0.0.0.0:*   
+LISTEN 0      4096         0.0.0.0:80         0.0.0.0:*   
+LISTEN 0      4096            [::]:443           [::]:*   
+LISTEN 0      4096            [::]:22            [::]:*   
+LISTEN 0      4096            [::]:80            [::]:*   
+(solo 22, 80 y 443; la BBDD no esta expuesta)
+
+# ca.key NO existe en el servidor
+(sin resultados = correcto)
+
+# Datos de la aplicacion conservados (BBDD)
+entradas_publicadas
+3
+ID	post_title
+5	Prueba ExP89 persistencia
+7	Prueba ExP89 persistencia 2
+
+# Reglas de Suricata utilizadas
+-rw-r--r-- 1 root root 551 Oct 19 18:40 /etc/suricata/rules/local.rules
+2312:  - /etc/suricata/rules/local.rules
+18:    HOME_NET: "[192.168.1.109]"
+
+# Comprobaciones desde el cliente
+$ curl -I --resolve "${DOMINIO}:80:${IP_SERVIDOR}" "http://${DOMINIO}/"
+HTTP/1.1 301 Moved Permanently
+Location: https://portal.proyecto.test/
+$ curl --cacert ca.crt --resolve ... https://${DOMINIO}/ (sin -k)
+HTTP=200 ssl_verify_result=0 (0=OK)
+$ openssl s_client ... -verify_hostname "$DOMINIO" -verify_return_error -brief
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Verification: OK
+Verified peername: portal.proyecto.test
+TLS 1.1 contra el servidor (@SECLEVEL=0): alert protocol version
+# Puerto 3306 y 8080 desde el cliente
+3306 cerrado
+8080 cerrado
+# ca.key solo en el Entorno A (WSL)
+-rw------- /home/student_vo/ca_root-pki/ca/private/ca.key

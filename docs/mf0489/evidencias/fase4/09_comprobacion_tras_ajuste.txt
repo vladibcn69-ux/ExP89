@@ -1,0 +1,53 @@
+# F4.6 Comprobacion tras el ajuste de TLS (servidor)
+# Hora: 2026-10-19T19:01:57Z
+
+$ docker compose ps
+NAME              IMAGE                       COMMAND                  SERVICE         CREATED          STATUS                    PORTS
+exp89-mariadb     mariadb:11.4                "docker-entrypoint.s…"   mariadb         38 minutes ago   Up 36 minutes (healthy)   3306/tcp
+exp89-nginx       nginx:stable-alpine         "/docker-entrypoint.…"   reverse-proxy   38 minutes ago   Up 36 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+exp89-wordpress   wordpress:6-php8.3-apache   "docker-entrypoint.s…"   wordpress       38 minutes ago   Up 36 minutes             80/tcp
+
+$ docker compose config --quiet
+OK
+
+$ docker compose exec reverse-proxy nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+# Configuracion TLS efectiva (nginx -T)
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+
+$ sudo systemctl is-active suricata
+active
+alertas SID 4890001 en fast.log: 124 (ultima: 10/19/2026-19:01:41.182)
+
+# BBDD: datos conservados
+ID	post_title	post_status
+1	Hello world!	publish
+5	Prueba ExP89 persistencia	publish
+7	Prueba ExP89 persistencia 2	publish
+
+# Puertos
+State  Recv-Q Send-Q Local Address:Port  Peer Address:Port
+LISTEN 0      4096         0.0.0.0:443        0.0.0.0:*   
+LISTEN 0      4096         0.0.0.0:22         0.0.0.0:*   
+LISTEN 0      4096         0.0.0.0:80         0.0.0.0:*   
+LISTEN 0      4096            [::]:443           [::]:*   
+LISTEN 0      4096            [::]:22            [::]:*   
+LISTEN 0      4096            [::]:80            [::]:*   
+
+# Fichero temporal del proyecto fuera de ~/exp89 y ~/backups_exp89
+-rw-r--r--  1 tcpdump tcpdump 1353 Oct 19 18:43 cap_http.pcap
+-rw-r--r--  1 tcpdump tcpdump 7782 Oct 19 18:44 cap_https.pcap
+
+# Cliente tras el ajuste
+$ curl -I --resolve ${DOMINIO}:80:${IP_SERVIDOR} http://${DOMINIO}/
+HTTP/1.1 301 Moved Permanently
+Location: https://portal.proyecto.test/
+$ curl --cacert ca.crt --resolve ... https://${DOMINIO}/  (sin -k)
+HTTP=200 ssl_verify_result=0 (0=OK)
+$ curl -s .../wp-login.php
+HTTP=200
+TLS 1.1 (@SECLEVEL=0): alert protocol version

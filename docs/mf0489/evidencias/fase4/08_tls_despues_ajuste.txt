@@ -1,0 +1,52 @@
+# TLS DESPUES del ajuste (ssl_ciphers solo ECDHE + AES-GCM/ChaCha20;  2026-10-19T19:01:38Z)
+
+> nmap -sT -Pn --script ssl-enum-ciphers --script-args tls.servername=portal.proyecto.test -p 443 192.168.1.109
+Starting Nmap 7.991 ( https://nmap.org ) at 2026-10-19 21:01 +0200
+Nmap scan report for 192.168.1.109
+Host is up (0.0010s latency).
+
+PORT    STATE SERVICE
+443/tcp open  https
+| ssl-enum-ciphers: 
+|   TLSv1.2: 
+|     ciphers: 
+|       TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (secp256r1) - A
+|       TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (secp256r1) - A
+|     compressors: 
+|       NULL
+|     cipher preference: client
+|   TLSv1.3: 
+|     ciphers: 
+|       TLS_AKE_WITH_AES_128_GCM_SHA256 (X25519MLKEM768) - A
+|       TLS_AKE_WITH_AES_256_GCM_SHA384 (X25519MLKEM768) - A
+|       TLS_AKE_WITH_CHACHA20_POLY1305_SHA256 (X25519MLKEM768) - A
+|     cipher preference: client
+|_  least strength: A
+
+Nmap done: 1 IP address (1 host up) scanned in 0.75 seconds
+
+
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "$DOMINIO" -CAfile "$CA_CERT" -verify_hostname "$DOMINIO" -verify_return_error -tls1_2 -brief </dev/null
+Protocol version: TLSv1.2
+Ciphersuite: ECDHE-RSA-AES256-GCM-SHA384
+Verification: OK
+Verified peername: portal.proyecto.test
+
+$ openssl s_client -connect "${IP_SERVIDOR}:443" -servername "$DOMINIO" -CAfile "$CA_CERT" -verify_hostname "$DOMINIO" -verify_return_error -tls1_3 -brief </dev/null
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Verification: OK
+Verified peername: portal.proyecto.test
+
+# Intentos con suites TLS 1.2 que el endurecimiento debe excluir (cliente con @SECLEVEL=0 para que no sea el limite)
+AES256-SHA256                RECHAZADA (handshake failure)
+AES128-SHA                   RECHAZADA (handshake failure)
+ECDHE-RSA-AES128-SHA         RECHAZADA (handshake failure)
+ECDHE-RSA-AES256-SHA384      RECHAZADA (handshake failure)
+ECDHE-RSA-CAMELLIA256-SHA384 RECHAZADA (handshake failure)
+
+# Suites TLS 1.2 que SI deben funcionar
+ECDHE-RSA-AES128-GCM-SHA256  ACEPTADA -> Ciphersuite: ECDHE-RSA-AES128-GCM-SHA256
+ECDHE-RSA-AES256-GCM-SHA384  ACEPTADA -> Ciphersuite: ECDHE-RSA-AES256-GCM-SHA384
+ECDHE-RSA-CHACHA20-POLY1305  ACEPTADA -> Ciphersuite: ECDHE-RSA-CHACHA20-POLY1305
