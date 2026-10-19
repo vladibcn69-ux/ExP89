@@ -1,0 +1,9 @@
+.env
+**/.env
+**/*.key
+**/private/
+*.p12
+*.pfx
+backups/
+*.sql
+*.gz
