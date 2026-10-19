@@ -1,0 +1,53 @@
+// ExP 89 - Arquitectura final (Fase 1)
+// Autor: Volodymyr Osebchuk
+// Render: dot -Tpng -Gdpi=130 arquitectura-final.dot -o arquitectura-final.png
+digraph arquitectura {
+  rankdir=TB; compound=true; newrank=true;
+  fontname="Arial"; fontsize=18; labelloc=t; nodesep=0.6; ranksep=0.75;
+  label="ExP 89 - Arquitectura HTTPS: CA de laboratorio + Nginx reverse proxy (portal.proyecto.test)\n ";
+  node [fontname="Arial", fontsize=12, shape=box, style="rounded,filled", fillcolor="#ffffff"];
+  edge [fontname="Arial", fontsize=11];
+
+  cli [label="Cliente (navegador / curl / openssl s_client)\nportal.proyecto.test → 192.168.1.109", fillcolor="#e8f0fe"];
+
+  subgraph cluster_A {
+    label="Entorno A - Administración de la CA\nWSL2 Ubuntu en el host Windows (NO es la VM CTF)";
+    style="rounded,filled"; fillcolor="#fdecea"; color="#c0392b";
+    ca [label="CA de laboratorio  ~/ca_root-pki/ca/\nprivate/ca.key  (RSA 4096, AES-256, 600)  ← nunca sale de aquí\nca.crt (público)  ·  servidor.ext", fillcolor="#f9d6d2"];
+  }
+
+  subgraph cluster_B {
+    label="Entorno B - Ubuntu Server (VM VirtualBox MF0488) · 192.168.1.109 · interfaz enp0s3";
+    style="rounded,filled"; fillcolor="#eef7ee"; color="#2e7d32";
+
+    suri [label="Suricata (IDS, af-packet en enp0s3)\nVE: handshake TLS (SNI, certificado, versión/cifrado)\ny HTTP en claro del puerto 80\nNO VE: contenido HTTP dentro de TLS\nni el tráfico interno de Docker (bridges exp89_*)", fillcolor="#fff3cd"];
+    files [label="Material PKI en el host (Entorno B)\n/etc/ssl/private/servidor.key  (600, root) ← solo aquí\n/etc/ssl/certs/servidor.crt  (644)\n/etc/ssl/mf0489/ca.crt  (644)", fillcolor="#e0f2f1"];
+
+    subgraph cluster_docker {
+      label="Docker Compose · proyecto exp89"; style="rounded,filled"; fillcolor="#e3f2fd"; color="#1565c0";
+      subgraph cluster_front {
+        label="red exp89_front · 10.89.1.0/24"; style="rounded,dashed,filled"; fillcolor="#ffffff"; color="#1565c0";
+        nginx [label="exp89-nginx · Nginx reverse proxy\n443/tcp TLS  ·  80/tcp → redirección 301 a HTTPS\nTERMINACIÓN TLS", fillcolor="#bbdefb", penwidth=2.5];
+        wp [label="exp89-wordpress\nHTTP 80 interno (sin TLS)\nsin puertos publicados"];
+      }
+      subgraph cluster_back {
+        label="red exp89_back · 10.89.2.0/24 · internal: true"; style="rounded,dashed,filled"; fillcolor="#ffffff"; color="#6a1b9a";
+        db [label="exp89-mariadb\n3306 interno · volumen exp89_db_data\nsin puertos publicados", fillcolor="#e1bee7"];
+      }
+    }
+  }
+
+  cli -> nginx [label="  HTTPS (TLS) · 443  ", color="#1565c0", fontcolor="#1565c0", penwidth=2.5];
+  cli -> nginx [label="  HTTP · 80 → 301  ", color="#999999", fontcolor="#777777", style=dashed];
+  nginx -> wp [label="  HTTP interno (exp89_front)  ", color="#555555"];
+  wp -> db [label="  MySQL interno (exp89_back)  ", color="#555555"];
+  wp -> nginx [style=invis];
+
+  files -> nginx [label="  montaje solo lectura  ", color="#2e7d32", fontcolor="#2e7d32", style=dotted];
+  suri -> nginx [label="  captura enp0s3 (tráfico entrante)  ", color="#b8860b", fontcolor="#b8860b", style=dotted, dir=none];
+
+  files -> ca [dir=both, label="  →  1) CSR (servidor.csr)\n  ←  2) servidor.crt + ca.crt\n  (scp, solo material público)  ", color="#c0392b", fontcolor="#c0392b", style=dashed, constraint=false];
+
+  {rank=same; cli; ca;}
+  {rank=same; files; suri;}
+}
