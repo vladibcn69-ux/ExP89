@@ -143,15 +143,19 @@ capa de la imagen nginx:stable-alpine contiene alguna clave: 0 ficheros en /etc/
     sub/.ca_pass -> IGNORADO por la línea 11 (.ca_pass)
     ok.txt -> no ignorado (esperado solo para ok.txt)
 
-## 9. Lo publicado en GitHub
-  https://github.com/vladibcn69-ux/ExP89 - visibilidad: PUBLIC
-  commits publicados:
+## 9. Lo publicado en GitHub (estado final tras el push de las Fases 4 y 5)
+  https://github.com/vladibcn69-ux/ExP89 - visibilidad: PUBLIC - rama: main
+  commits publicados (de mas reciente a mas antiguo):
+    (este commit) VolodymyrOsebchuk <vladibcn69@gmail.com> Actualizar la seccion 9 del ultimo check con el estado real de GitHub
+    4203338 VolodymyrOsebchuk <vladibcn69@gmail.com> Fase 5: guia de despliegue, scripts reproducibles, README, diagrama final y entrega final
+    4af5afc VolodymyrOsebchuk <vladibcn69@gmail.com> Fase 4: auditoria TLS, regla local de Suricata, logs de Nginx y ajuste de cifrados
+    69ac34e VolodymyrOsebchuk <vladibcn69@gmail.com> Fase 3: HTTPS con Nginx reverse proxy, WordPress y MariaDB en Docker Compose
     404800f VolodymyrOsebchuk <vladibcn69@gmail.com> Fase 2: PKI con OpenSSL (CA, CSR, certificado, instalacion y evidencias)
     223b6e3 VolodymyrOsebchuk <vladibcn69@gmail.com> Fase 1: diagrama de arquitectura y documentacion
     02bf2f6 VolodymyrOsebchuk <vladibcn69@gmail.com> Estructura inicial del proyecto, .gitignore y README
-  ficheros publicados: 26
-  contenido publicado: marcadores de clave privada PEM=0, ficheros .key/.env/.pcap/.sql=0, password servidor=0, lineas de coautoria o asistentes=0, autores: VolodymyrOsebchuk <vladibcn69@gmail.com>
-  Fases 3, 4 y 5: solo en local (ahead de origin: 5 commits); pendiente de confirmacion de push
+  ficheros publicados: 50
+  contenido publicado: marcadores de clave privada PEM=0, ficheros .key/.env/.pcap/.sql=0, passwords del .env y de ca.key=0, lineas de coautoria o asistentes=0, autores: VolodymyrOsebchuk <vladibcn69@gmail.com>
+  Fases 1 a 5 publicadas; verificacion con un clon limpio del remoto: ver la salida del push final
 
 ## 10-11. Confianza HTTPS y redireccion HTTP -> HTTPS (cliente)
 # cliente WSL2 con solo ca.crt (IP_SERVIDOR=192.168.1.109 CA_CERT=./ca.crt scripts/verificar-https.sh)
